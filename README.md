@@ -71,6 +71,7 @@ AWS_PROFILE=myprofile AWS_REGION=us-west-2
 `eks-node-viewer` supports some custom label names that can be passed to the `--extra-labels` to display additional node information. 
 
 - `eks-node-viewer/node-age` - Age of the node
+- `eks-node-viewer/node-manager` - The manager of the node (e.g. MNG, Karpenter, or Fargate)
 - `eks-node-viewer/node-cpu-usage` - CPU usage (requests)
 - `eks-node-viewer/node-memory-usage` - Memory usage (requests)
 - `eks-node-viewer/node-pods-usage` - Pod usage (requests)

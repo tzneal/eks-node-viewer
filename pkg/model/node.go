@@ -51,17 +51,34 @@ func NewNode(n *v1.Node) *Node {
 }
 
 func (n *Node) IsOnDemand() bool {
+	n.mu.RLock()
+	defer n.mu.RUnlock()
 	return n.node.Labels["karpenter.sh/capacity-type"] == "on-demand" ||
 		n.node.Labels["eks.amazonaws.com/capacityType"] == "ON_DEMAND"
 }
 
 func (n *Node) IsSpot() bool {
+	n.mu.RLock()
+	defer n.mu.RUnlock()
 	return n.node.Labels["karpenter.sh/capacity-type"] == "spot" ||
 		n.node.Labels["eks.amazonaws.com/capacityType"] == "SPOT"
 }
 
 func (n *Node) IsFargate() bool {
+	n.mu.RLock()
+	defer n.mu.RUnlock()
 	return n.node.Labels["eks.amazonaws.com/compute-type"] == "fargate"
+}
+
+func (n *Node) IsMNG() bool {
+	n.mu.RLock()
+	defer n.mu.RUnlock()
+	return n.node.Labels["eks.amazonaws.com/nodegroup"] != ""
+}
+func (n *Node) IsKarpenter() bool {
+	n.mu.RLock()
+	defer n.mu.RUnlock()
+	return n.node.Labels["karpenter.sh/provisioner-name"] != ""
 }
 
 func (n *Node) Update(node *v1.Node) {
@@ -241,12 +258,28 @@ func (n *Node) ComputeLabel(labelName string) string {
 	switch labelName {
 	case "eks-node-viewer/node-age":
 		return duration.HumanDuration(time.Since(n.Created()))
+	case "eks-node-viewer/node-manager":
+		return n.manager()
 	}
+
 	// resource based custom labels
 	if match := resourceLabelRe.FindStringSubmatch(labelName); len(match) > 0 {
 		return pctUsage(n.Allocatable(), n.Used(), match[1])
 	}
 	return labelName
+}
+
+func (n *Node) manager() string {
+	if n.IsFargate() {
+		return "Fargate"
+	}
+	if n.IsMNG() {
+		return "MNG"
+	}
+	if n.IsKarpenter() {
+		return "Karpenter"
+	}
+	return "Self"
 }
 
 func pctUsage(allocatable v1.ResourceList, used v1.ResourceList, resource string) string {
